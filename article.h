@@ -20,8 +20,11 @@ namespace metasci
 {
 class Author
 {
-    int32_t         id_ = -1;
-    static int32_t  max_id_;
+    int32_t         id_;
+    // From here, the max_id_ param. is required to track the 
+    // currently assigned IDs. Every time an instance of Author is 
+    // created, max_id_ is incremented.
+    static int32_t  max_id_; 
     string          orcid;
     bool            is_auth_orcid;
     string          first_name;
@@ -33,7 +36,6 @@ public:
     string  get_family_name() const { return family_name; }
     str_vec get_affiliations() const { return affiliations; }
     void    add_affiliation(string aff) { affiliations.push_back(std::move(aff)); }
-    int32_t _getId_() const { return id_; }
 
     Author() { };
     Author(string first_name, string family_name);
@@ -47,7 +49,7 @@ public:
 Author::Author(string first_name, 
     string family_name): 
     first_name(first_name), 
-    family_name(family_name) 
+    family_name(std::move(family_name)) 
 { };
 
 Author::Author(
@@ -56,7 +58,7 @@ Author::Author(
     string orcid, 
     bool   is_authenticated_orcid): 
     first_name(first_name), 
-    family_name(family_name),
+    family_name(std::move(family_name)),
     orcid(orcid),
     is_auth_orcid(is_authenticated_orcid) 
 { };
@@ -71,7 +73,7 @@ public:
     string  get_title() const { return title; };
 
     Publisher();
-    Publisher(string title): title(title) { id_ = ++max_id_; };
+    Publisher(string title): title(std::move(title)) { id_ = ++max_id_; };
     virtual ~Publisher() { };
 };
 
@@ -161,14 +163,14 @@ private:
     static int32_t  max_id_;
     string          doi;
     string          title;          // article's title
-    string          type;           // "journal article" etc. 
+    string          type;           // journal article etc. 
     date_vec        published;      // either online (pref.) or print
     double          score;
     date_vec        issued;         // date of issue
     string          volume;
     string          issue;  
     // It doesn't make sense to make NCT IDs std::ref, since almost 
-    // never two articles refer the same ID.        
+    // never two articles refer to the same ID.        
     str_vec         ct_numbers; 
     int32_t         ref_num;
     int32_t         ref_by_num; 
@@ -258,21 +260,21 @@ Article::Builder::Builder(string title,
 { };
 
 Article::Article(Builder b): 
-    doi(b.doi_b), 
-    title(b.title_b), 
+    doi(std::move(b.doi_b)), 
+    title(std::move(b.title_b)), 
     type(b.type_b), 
     published(b.published_b),
     score(b.score_b), 
     issued(b.issued_b), 
     volume(b.volume_b), 
     issue(b.issue_b), 
-    ct_numbers(b.ct_numbers_b), 
+    ct_numbers(std::move(b.ct_numbers_b)), 
     ref_num(b.ref_num_b),
     ref_by_num(b.ref_by_num_b), 
-    journals(b.journals_b),
-    authors(b.authors_b),
-    subjects(b.subjects_b),
-    references(b.references_b)
+    journals(std::move(b.journals_b)),
+    authors(std::move(b.authors_b)),
+    subjects(std::move(b.subjects_b)),
+    references(std::move(b.references_b))
 { 
     id_ = ++max_id_;
 }
