@@ -5,9 +5,10 @@
  */
 
 // #include "async_api_connector.h"
+#include "conditional.h"
 #include "article.h"
 #include "logger.h"
-#include "orc/OrcFile.hh"
+// #include "orc/OrcFile.hh"
 
 #define JSON_DIAGNOSTICS 1
 
@@ -22,35 +23,41 @@
 #include <random>
 #include <regex>
 
+using Author                = metasci::Author;
+using Article               = metasci::Article;
+using Date                  = metasci::Date;
+using date_vec              = metasci::date_vec;
+using Journal               = metasci::Journal;
+using Journal_hasher        = metasci::Journal_hasher;
+using Journal_comparator    = metasci::Journal_comparator;
+using Subject               = metasci::Subject;
+using Subject_hasher        = metasci::Subject_hasher;
+using Subject_comparator    = metasci::Subject_comparator;
+using Publisher             = metasci::Publisher;
+
+using json                  = nlohmann::json;
+using article_vec           = std::vector<Article>;
+using journal_uset          = 
+    std::unordered_set<Journal, Journal_hasher, Journal_comparator>;
+using subject_uset          = 
+    std::unordered_set<Subject, Subject_hasher, Subject_comparator>;
+
 using std::endl;
 using std::cout;
 using std::cerr;
-using json          = nlohmann::json;
-using journal_uset  = 
-    std::unordered_set<Journal, Journal_hasher, Journal_comparator>;
-using article_vec   = std::vector<Article>;
-using subject_uset  = 
-    std::unordered_set<Subject, Subject_hasher, Subject_comparator>;
 
-struct Id_tracker
-{
-    int32_t subj_max_id;
-    int32_t author_max_id;
-    int32_t journal_max_id;
-    int32_t publisher_max_id;
-    int32_t article_max_id;
-};
+int32_t Journal::max_id_ = 0;
+int32_t Article::max_id_ = 0;
+int32_t Publisher::max_id_ = 0;
+int32_t Subject::max_id_ = 0;
+int32_t Author::max_id_ = 0;
 
-std::vector<uint32_t>
-gen_rand_seq(uint32_t min, uint32_t max, uint32_t seq_len);
 void 
-parse_crossref_json_files(
-    std::ifstream &inf, 
-    std::ofstream &json_log, 
+parse_crossref_json_files(std::ifstream &inf, 
+    std::ofstream &json_log_file, 
     journal_uset  &journals,
     article_vec   &articles, 
-    subject_uset  &subjects,
-    Id_tracker    &id_tracker);
+    subject_uset  &subjects);
 
 int main(int argc, char const *argv[])
 {
@@ -89,60 +96,65 @@ int main(int argc, char const *argv[])
     std::vector<Article> articles;
     std::vector<Author> authors;
     subject_uset subjects;
-    Id_tracker id_tracker;
 
-    parse_crossref_json_files(inf, json_log_file, journals, articles, subjects, id_tracker);
+    parse_crossref_json_files(inf, json_log_file, journals, articles, subjects);
 
-    // for (auto &a : articles)
-    // {
-    //     auto js = a.get_journals();
+    for (auto &a : articles)
+    {
+        cout << "Article: " << a.get_title() << '\n';
+
+        auto js = a.get_journals();
         
-    //     for (auto &j : js)
-    //     {
-    //         json_log_file << j.get_title() << endl;
-    //     }
+        cout << "Are journals empty? " << (js.size() == 0) << '\n';
+
+        for (auto &j : js)
+        {
+            cout << j.get_title() << endl;
+        }
+
+        auto authors = a.get_authors();
         
-    //     // std::copy(j_names.begiqn(), j_names.end(),
-    //     //     std::ostream_iterator<string>(std::cout, "\n"),
-    //     //     []q(string &jour)
-    //     //     {
-    //     //         return jour;
-    //     //     }
-    //     // )
-    // }
+        cout << "Authors: " << '\n';
+        
+        for (auto &a : authors)
+        {
+            cout << a.get_family_name() << '\n';
+        }
+        
+        cout << '\n';
+
+        auto subjects = a.get_subjects();
+        
+        cout << "Subjects: " << '\n';
+        
+        for (auto &s : subjects)
+        {
+            cout << s.get_title() << '\n';
+        }
+
+        cout << '\n';
+        // std::copy(j_names.begiqn(), j_names.end(),
+        //     std::ostream_iterator<string>(std::cout, "\n"),
+        //     []q(string &jour)
+        //     {
+        //         return jour;
+        //     }
+        // )
+    }
 
     return 0;
 }
-
-std::vector<uint32_t>
-gen_rand_seq(uint32_t min, uint32_t max, uint32_t seq_len)
-{
-    std::random_device rdev;
-    std::mt19937::result_type seed = rdev();
-    std::mt19937 rng(seed);  
-    std::uniform_int_distribution<uint32_t> dist(min, max);
-    
-    std::vector<uint32_t> v;
-
-    for (int32_t i = 0; i < seq_len; i++)
-    {
-        v.push_back(dist(rng));
-    }
-
-    return v;
-};
 
 // TODO: add checking status, if it's ok, if no write log
 void 
 parse_crossref_json_files(
     std::ifstream &inf, 
-    std::ofstream &json_log, 
+    std::ofstream &json_log_file, 
     journal_uset  &journals,
     article_vec   &articles,
-    subject_uset  &subjects,
-    Id_tracker    &id_tracker)
+    subject_uset  &subjects)
 {
-    std::vector<Json_logger> json_logs;
+    std::vector<metasci::Json_logger> json_logs;
 
     json crossref_file = json::parse(inf);
 
@@ -163,8 +175,8 @@ parse_crossref_json_files(
         string title;
         string doi;
         string publisher;
-        std::vector<std::reference_wrapper<const Journal>> journal_refs_tmp;
-        std::vector<Author> authors;
+        metasci::cref_vec<Journal>  journal_refs_tmp;
+        std::vector<Author>         authors;
 
         try
         {
@@ -200,15 +212,10 @@ parse_crossref_json_files(
 
             for (auto &el : container_title)
             {
-                journals.emplace(el, publisher);
-
-                Journal j(el, publisher);
-
-                auto j_it = journals.find(j);
-                if (j_it != journals.end())
-                {
-                    journal_refs_tmp.emplace_back(*j_it);
-                }
+                metasci::cond::Emplacer<journal_uset, journal_uset::iterator, std::string, std::string> emp;
+                auto emplace_res = emp.emplace(journals, el, publisher);
+                
+                journal_refs_tmp.emplace_back(*emplace_res.first);
             }
         }
         catch(const json::type_error &e)
@@ -220,8 +227,7 @@ parse_crossref_json_files(
 
         try
         {
-            json author = item.at("author");
-      
+            json    author = item.at("author");    
             string  orcid; 
             bool    is_auth_orcid;
 
@@ -235,7 +241,6 @@ parse_crossref_json_files(
                     };
 
                     orcid = cut_orcid(el.at("ORCID"));
-
                     is_auth_orcid = el.at("authenticated-orcid");
                 }
                 catch(const json::type_error &e)
@@ -281,7 +286,6 @@ parse_crossref_json_files(
         catch(const json::exception &e) 
         { }
 
-        // Volumes are short, so small string optim-on will possibly be applied.
         try
         {
             article_b.volume_b = item.at("volume");
@@ -293,7 +297,6 @@ parse_crossref_json_files(
         catch(const json::exception &e) 
         { }
         
-        // Types are short, so small string optim-on will possibly be applied.
         try
         {
             article_b.type_b = item.at("type");
@@ -346,7 +349,10 @@ parse_crossref_json_files(
         try
         {           
             auto score = item.at("score");
-            if (!score.is_null()) article_b.score_b = score; 
+            if (!score.is_null()) 
+            {
+                article_b.score_b = score;
+            } 
         }
         catch(const json::type_error &e)
         {
@@ -361,15 +367,10 @@ parse_crossref_json_files(
             
             for (const auto &el : subject)
             {
-                bool is_emplaced = subjects.emplace(Subject{el}).second;
-
-                if (is_emplaced) id_tracker.subj_max_id += 1;
+                metasci::cond::Emplacer<subject_uset, subject_uset::iterator, Subject> emp;
+                auto emplace_res = emp.emplace(subjects, el);
                 
-                auto subj_it = subjects.find(Subject{el});
-                if (subj_it != subjects.end())
-                {
-                    article_b.subjects_b.emplace_back(*subj_it);
-                }
+                article_b.subjects_b.emplace_back(*emplace_res.first);
             }          
         }
         catch(const json::type_error &e)
@@ -411,7 +412,7 @@ parse_crossref_json_files(
 
             for (auto &el : published)
             {
-                article_b.issued_b.emplace_back(Date{el.at(0), el.at(1), el.at(2)});
+                article_b.published_b.emplace_back(Date{el.at(0), el.at(1), el.at(2)});
             }
         }
         catch(const json::type_error &e)
@@ -442,6 +443,6 @@ parse_crossref_json_files(
 
     for (auto &el : json_logs) 
     {
-        el.write_msg(json_log); 
+        el.write(json_log_file); 
     }
 }
