@@ -7,6 +7,7 @@
 // #include "async_api_connector.h"
 #include "article.h"
 #include "logger.h"
+#include "orc/OrcFile.hh"
 
 #define JSON_DIAGNOSTICS 1
 
@@ -25,11 +26,20 @@ using std::endl;
 using std::cout;
 using std::cerr;
 using json          = nlohmann::json;
-using journal_uset = 
+using journal_uset  = 
     std::unordered_set<Journal, Journal_hasher, Journal_comparator>;
-using article_vec = std::vector<Article>;
-using subject_uset = 
+using article_vec   = std::vector<Article>;
+using subject_uset  = 
     std::unordered_set<Subject, Subject_hasher, Subject_comparator>;
+
+struct Id_tracker
+{
+    int32_t subj_max_id;
+    int32_t author_max_id;
+    int32_t journal_max_id;
+    int32_t publisher_max_id;
+    int32_t article_max_id;
+};
 
 std::vector<uint32_t>
 gen_rand_seq(uint32_t min, uint32_t max, uint32_t seq_len);
@@ -39,7 +49,8 @@ parse_crossref_json_files(
     std::ofstream &json_log, 
     journal_uset  &journals,
     article_vec   &articles, 
-    subject_uset &subjects);
+    subject_uset  &subjects,
+    Id_tracker    &id_tracker);
 
 int main(int argc, char const *argv[])
 {
@@ -78,8 +89,9 @@ int main(int argc, char const *argv[])
     std::vector<Article> articles;
     std::vector<Author> authors;
     subject_uset subjects;
+    Id_tracker id_tracker;
 
-    parse_crossref_json_files(inf, json_log_file, journals, articles, subjects);
+    parse_crossref_json_files(inf, json_log_file, journals, articles, subjects, id_tracker);
 
     // for (auto &a : articles)
     // {
@@ -127,7 +139,8 @@ parse_crossref_json_files(
     std::ofstream &json_log, 
     journal_uset  &journals,
     article_vec   &articles,
-    subject_uset  &subjects)
+    subject_uset  &subjects,
+    Id_tracker    &id_tracker)
 {
     std::vector<Json_logger> json_logs;
 
@@ -150,7 +163,7 @@ parse_crossref_json_files(
         string title;
         string doi;
         string publisher;
-        std::vector<std::reference_wrapper<const Journal>> journal_refs;
+        std::vector<std::reference_wrapper<const Journal>> journal_refs_tmp;
         std::vector<Author> authors;
 
         try
@@ -194,7 +207,7 @@ parse_crossref_json_files(
                 auto j_it = journals.find(j);
                 if (j_it != journals.end())
                 {
-                    journal_refs.emplace_back(*j_it);
+                    journal_refs_tmp.emplace_back(*j_it);
                 }
             }
         }
@@ -202,7 +215,8 @@ parse_crossref_json_files(
         {
             json_logs.emplace_back(e.id, e.what(), "title: " + title);
         }
-        catch(...) { }
+        catch(...) 
+        { }
 
         try
         {
@@ -228,7 +242,8 @@ parse_crossref_json_files(
                 {
                     json_logs.emplace_back(e.id, e.what(), "title: " + title);
                 }    
-                catch(const json::exception &e) { }   
+                catch(const json::exception &e) 
+                { }   
 
                 authors.emplace_back(el.at("given"), el.at("family"), orcid, is_auth_orcid);
                 
@@ -241,16 +256,18 @@ parse_crossref_json_files(
                         authors.back().add_affiliation(aff);
                     }   
                 }
-                catch(const json::exception &e) { }  
+                catch(const json::exception &e) 
+                { }  
             }
         }
         catch(const json::type_error &e)
         {
             json_logs.emplace_back(e.id, e.what(), "title: " + title);
         }   
-        catch(const json::exception &e) { }
+        catch(const json::exception &e) 
+        { }
 
-        auto article_b = Article::Builder(title, doi, journal_refs, authors);
+        auto article_b = Article::Builder(title, doi, journal_refs_tmp, authors);
 
         // Issues are short, so small string optim-on will possibly be applied.
         try
@@ -261,7 +278,8 @@ parse_crossref_json_files(
         {
             json_logs.emplace_back(e.id, e.what(), "title: " + title);
         }
-        catch(const json::exception &e) { }
+        catch(const json::exception &e) 
+        { }
 
         // Volumes are short, so small string optim-on will possibly be applied.
         try
@@ -272,7 +290,8 @@ parse_crossref_json_files(
         {
             json_logs.emplace_back(e.id, e.what(), "title: " + title);
         }
-        catch(const json::exception &e) { }
+        catch(const json::exception &e) 
+        { }
         
         // Types are short, so small string optim-on will possibly be applied.
         try
@@ -283,7 +302,8 @@ parse_crossref_json_files(
         {
             json_logs.emplace_back(e.id, e.what(), "title: " + title);
         }
-        catch(const json::exception &e) { }
+        catch(const json::exception &e) 
+        { }
 
         try
         {
@@ -293,7 +313,8 @@ parse_crossref_json_files(
         {
             json_logs.emplace_back(e.id, e.what(), "title: " + title);
         }
-        catch(const json::exception &e) { }
+        catch(const json::exception &e) 
+        { }
 
         try
         {
@@ -303,7 +324,8 @@ parse_crossref_json_files(
         {
             json_logs.emplace_back(e.id, e.what(), "title: " + title);
         }
-        catch(const json::exception &e) { }
+        catch(const json::exception &e) 
+        { }
 
         try
         {
@@ -318,7 +340,8 @@ parse_crossref_json_files(
         {
             json_logs.emplace_back(e.id, e.what(), "title: " + title);
         }
-        catch(const json::exception &e) { }
+        catch(const json::exception &e) 
+        { }
 
         try
         {           
@@ -329,7 +352,8 @@ parse_crossref_json_files(
         {
             json_logs.emplace_back(e.id, e.what(), "title: " + title);
         }
-        catch(const json::exception &e) { }
+        catch(const json::exception &e) 
+        { }
 
         try
         {
@@ -337,7 +361,9 @@ parse_crossref_json_files(
             
             for (const auto &el : subject)
             {
-                subjects.emplace(Subject{el});
+                bool is_emplaced = subjects.emplace(Subject{el}).second;
+
+                if (is_emplaced) id_tracker.subj_max_id += 1;
                 
                 auto subj_it = subjects.find(Subject{el});
                 if (subj_it != subjects.end())
@@ -350,7 +376,8 @@ parse_crossref_json_files(
         {
             json_logs.emplace_back(e.id, e.what(), "title: " + title);
         }
-        catch(const json::exception &e) { }
+        catch(const json::exception &e) 
+        { }
         
         try
         {
@@ -358,21 +385,22 @@ parse_crossref_json_files(
 
             for (auto &el : ct_num)
             {
-                article_b.ct_number_b.emplace_back(el);
+                article_b.ct_numbers_b.emplace_back(el);
             }           
         }
         catch(const json::type_error &e)
         {
             json_logs.emplace_back(e.id, e.what(), "title: " + title);
         }
-        catch(const json::exception &e) { }
+        catch(const json::exception &e) 
+        { }
 
         try
         {
             bool is_published = item.contains("published-online"); 
             json published;
 
-            if (!published)
+            if (!is_published)
             {
                 published = item.at("published-print").at("date-parts");
             }
@@ -390,7 +418,8 @@ parse_crossref_json_files(
         {
             json_logs.emplace_back(e.id, e.what(), "title: " + title);
         }
-        catch(const json::exception &e) { }
+        catch(const json::exception &e) 
+        { }
 
         try
         {
@@ -405,7 +434,8 @@ parse_crossref_json_files(
         {
             json_logs.emplace_back(e.id, e.what(), "title: " + title);
         }
-        catch(const json::exception &e) { }
+        catch(const json::exception &e) 
+        { }
         
         articles.emplace_back(article_b.build());
     }  

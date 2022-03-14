@@ -16,14 +16,15 @@
 using str_vec   = std::vector<std::string>;
 using string    = std::string;
 
+
 class Author
 {
-    int32_t _id = -1;
-    string  orcid;
-    bool    is_authenticated_orcid;
-    string  first_name;
-    string  family_name;
-    str_vec affiliations;
+    int32_t         _id = -1;
+    string          orcid;
+    bool            is_auth_orcid;
+    string          first_name;
+    string          family_name;
+    str_vec         affiliations;
 
 public:
     string  get_first_name() const { return first_name; }
@@ -42,7 +43,9 @@ public:
         string orcid, 
         bool   is_authenticated_orcid): 
         first_name(first_name), 
-        family_name(family_name) 
+        family_name(family_name),
+        orcid(orcid),
+        is_auth_orcid(is_authenticated_orcid) 
     { };
     Author(string first_name, string family_name, str_vec affiliations): 
        first_name(first_name), 
@@ -58,8 +61,8 @@ public:
         first_name(first_name), 
         family_name(family_name), 
         affiliations(std::move(affiliations)),
-        orcid(std::move(orcid)),
-        is_authenticated_orcid(is_authenticated_orcid) 
+        orcid(orcid),
+        is_auth_orcid(is_authenticated_orcid) 
     { };
     ~Author() { };
 };
@@ -166,13 +169,15 @@ private:
     date_vec    issued;         // date of issue
     string      volume;
     string      issue;          
-    str_vec     ct_number;      // clinical trial number
+    str_vec     ct_numbers;      // it doesn't make sense to make ref-s to NCT 
+                                // IDs, since almost never two articles ref. 
+                                // the same one
     int32_t     ref_num;
     int32_t     ref_by_num; 
     std::vector<Author> authors;
     mutable std::vector<std::reference_wrapper<const Journal>> journals; 
     std::vector<std::reference_wrapper<const Subject>> subjects;  // optional
-    std::vector<string> references;   // optional
+    str_vec     references;   // optional
 public:
     string                get_title() const { return title; }
     std::vector<Journal>  get_journals() 
@@ -188,6 +193,9 @@ public:
         return journals_tmp;
     }
 
+    // I'm aware that it's a non-standard solution to implement
+    // a builder class. However, in this case I've decided to stick to it,
+    // since I don't really see any need for the Builder's inheritance here.
     class Builder
     {
     public:
@@ -199,7 +207,7 @@ public:
         date_vec    issued_b;      
         string      volume_b;
         string      issue_b;
-        str_vec     ct_number_b;   
+        str_vec     ct_numbers_b;   
         int32_t     ref_num_b;
         int32_t     ref_by_num_b;
         std::vector<std::reference_wrapper<const Journal>> journals_b;
@@ -235,7 +243,7 @@ public:
         issued(b.issued_b), 
         volume(b.volume_b), 
         issue(b.issue_b), 
-        ct_number(b.ct_number_b), 
+        ct_numbers(b.ct_numbers_b), 
         ref_num(b.ref_num_b),
         ref_by_num(b.ref_by_num_b), 
         journals(b.journals_b),
