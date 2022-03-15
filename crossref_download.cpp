@@ -96,50 +96,54 @@ int main(int argc, char const *argv[])
     std::vector<Author> authors;
     subject_uset subjects;
 
+    auto t1 = std::chrono::high_resolution_clock::now();
     parse_crossref_json_files(inf, json_log_file, journals, articles, subjects);
+    auto t2 = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> m_diff = t2 - t1;
+    std::cout << "time, ms: " << m_diff.count() << std::endl;
 
-    for (auto &a : articles)
-    {
-        cout << "Article: " << a.get_title() << '\n';
+    // for (auto &a : articles)
+    // {
+    //     cout << "Article: " << a.get_title() << '\n';
 
-        auto js = a.get_journals();
+    //     auto js = a.get_journals();
         
-        cout << "Are journals empty? " << (js.size() == 0) << '\n';
+    //     cout << "Are journals empty? " << (js.size() == 0) << '\n';
 
-        for (auto &j : js)
-        {
-            cout << j.get_title() << endl;
-        }
+    //     for (auto &j : js)
+    //     {
+    //         cout << j.get_title() << endl;
+    //     }
 
-        auto authors = a.get_authors();
+    //     auto authors = a.get_authors();
         
-        cout << "Authors: " << '\n';
+    //     cout << "Authors: " << '\n';
         
-        for (auto &a : authors)
-        {
-            cout << a.get_family_name() << '\n';
-        }
+    //     for (auto &a : authors)
+    //     {
+    //         cout << a.get_family_name() << '\n';
+    //     }
         
-        cout << '\n';
+    //     cout << '\n';
 
-        auto subjects = a.get_subjects();
+    //     auto subjects = a.get_subjects();
         
-        cout << "Subjects: " << '\n';
+    //     cout << "Subjects: " << '\n';
         
-        for (auto &s : subjects)
-        {
-            cout << s.get_title() << '\n';
-        }
+    //     for (auto &s : subjects)
+    //     {
+    //         cout << s.get_title() << '\n';
+    //     }
 
-        cout << '\n';
-        // std::copy(j_names.begiqn(), j_names.end(),
-        //     std::ostream_iterator<string>(std::cout, "\n"),
-        //     []q(string &jour)
-        //     {
-        //         return jour;
-        //     }
-        // )
-    }
+    //     cout << '\n';
+    //     // std::copy(j_names.begiqn(), j_names.end(),
+    //     //     std::ostream_iterator<string>(std::cout, "\n"),
+    //     //     []q(string &jour)
+    //     //     {
+    //     //         return jour;
+    //     //     }
+    //     // )
+    // }
 
     return 0;
 }
@@ -211,8 +215,10 @@ parse_crossref_json_files(
 
             for (auto &el : container_title)
             {
-                metasci::cond::Emplacer<journal_uset, journal_uset::iterator, std::string, std::string> emp;
-                auto emplace_res = emp.emplace(journals, el, publisher);
+                Journal j(std::move(el), std::move(publisher));
+
+                metasci::cond::Emplacer<journal_uset, journal_uset::iterator, Journal> emp;
+                auto emplace_res = emp.emplace_to(journals, std::forward<Journal>(j));
                 
                 journal_refs_tmp.emplace_back(*emplace_res.first);
             }
@@ -249,7 +255,7 @@ parse_crossref_json_files(
                 catch(const json::exception &e) 
                 { }   
 
-                authors.emplace_back(el.at("given"), el.at("family"), orcid, is_auth_orcid);
+                authors.emplace_back(std::move(el.at("given")), std::move(el.at("family")), std::move(orcid), is_auth_orcid);
                 
                 try
                 {
@@ -257,7 +263,7 @@ parse_crossref_json_files(
 
                     for (auto &aff : affiliations)
                     {
-                        authors.back().add_affiliation(aff);
+                        authors.back().add_affiliation(std::move(aff));
                     }   
                 }
                 catch(const json::exception &e) 
@@ -271,7 +277,7 @@ parse_crossref_json_files(
         catch(const json::exception &e) 
         { }
 
-        auto article_b = Article::Builder(title, doi, journal_refs_tmp, authors);
+        auto article_b = Article::Builder(std::move(title), std::move(doi), std::move(journal_refs_tmp), std::move(authors));
 
         // Issues are short, so small string optim-on will possibly be applied.
         try
@@ -344,7 +350,7 @@ parse_crossref_json_files(
         }
         catch(const json::exception &e) 
         { }
-
+    
         try
         {           
             auto score = item.at("score");
@@ -363,11 +369,11 @@ parse_crossref_json_files(
         try
         {
             json subject = item.at("subject");
-            
+
             for (const auto &el : subject)
             {
                 metasci::cond::Emplacer<subject_uset, subject_uset::iterator, Subject> emp;
-                auto emplace_res = emp.emplace(subjects, el);
+                auto emplace_res = emp.emplace_to(subjects, std::forward<Subject>(el));
                 
                 article_b.subjects_b.emplace_back(*emplace_res.first);
             }          

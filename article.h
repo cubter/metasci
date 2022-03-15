@@ -37,31 +37,31 @@ public:
     string  get_first_name() const { return first_name; }
     string  get_family_name() const { return family_name; }
     str_vec get_affiliations() const { return affiliations; }
-    void    add_affiliation(string aff) { affiliations.push_back(std::move(aff)); }
+    void    add_affiliation(string &&aff) { affiliations.push_back(std::move(aff)); }
 
     Author() { };
-    Author(string first_name, string family_name);
-    Author(string first_name, 
-        string family_name, 
-        string orcid, 
+    Author(string &&first_name, string &&family_name);
+    Author(string &&first_name, 
+        string &&family_name, 
+        string &&orcid, 
         bool is_authenticated_orcid); 
     ~Author() { };
 };
 
-Author::Author(string first_name, 
-    string family_name): 
-    first_name(first_name), 
+Author::Author(string &&first_name, 
+    string &&family_name): 
+    first_name(std::move(first_name)), 
     family_name(std::move(family_name)) 
 { };
 
 Author::Author(
-    string first_name, 
-    string family_name, 
-    string orcid, 
+    string &&first_name, 
+    string &&family_name, 
+    string &&orcid, 
     bool   is_authenticated_orcid): 
-    first_name(first_name), 
+    first_name(std::move(first_name)), 
     family_name(std::move(family_name)),
-    orcid(orcid),
+    orcid(std::move(orcid)),
     is_auth_orcid(is_authenticated_orcid) 
 { };
 
@@ -75,8 +75,14 @@ public:
     string  get_title() const { return title; };
 
     Publisher();
-    Publisher(string title): title(std::move(title)) { id_ = ++max_id_; };
+    Publisher(string &&title);
     virtual ~Publisher() { };
+};
+
+Publisher::Publisher(string &&title): 
+    title(std::move(title)) 
+{ 
+    id_ = ++max_id_; 
 };
 
 class Journal: public Publisher
@@ -89,15 +95,15 @@ public:
     string get_title() const            { return title; }
     string get_publisher_title() const  { return(Publisher::get_title()); }
 
-    Journal() { }
-    Journal(string title, string publisher_title);
+    Journal() { };
+    Journal(string &&title, string &&publisher_title);
 
     virtual ~Journal() { };
 };
 
-Journal::Journal(string title, string publisher_title):
-    title(title), 
-    Publisher(publisher_title) 
+Journal::Journal(string &&title, string &&publisher_title):
+    title(std::move(title)), 
+    Publisher(std::move(publisher_title)) 
 { 
     id_ = ++max_id_; 
 };
@@ -134,12 +140,19 @@ private:
     static int32_t  max_id_;
     
 public:
-    string  get_title() const { return title; }
+    string get_title() const { return title; }
 
     Subject() {}; 
-    Subject(string title): title(title) { id_ = ++max_id_; }; 
+    Subject(string title); 
     ~Subject() {};
 };
+
+Subject::Subject(string title): 
+    title(title)
+{ 
+    id_ = ++max_id_; 
+}; 
+
 struct Subject_hasher
 {
     size_t operator()(const Subject &s) const noexcept
@@ -208,15 +221,12 @@ public:
         std::vector<Author>         authors_b;
         std::vector<string>         references_b;
 
-        Article build()
-        {
-            return Article(*this);
-        }
+        Article build() { return Article(*this); }
 
-        Builder(string title, 
-            string doi, 
-            cref_vec<Journal> journals,
-            std::vector<Author> authors);
+        Builder(string &&title, 
+            string &&doi, 
+            cref_vec<Journal> &&journals,
+            std::vector<Author> &&authors);
     };
     
     // Article &operator =(const Article &) = delete;
@@ -251,10 +261,10 @@ std::vector<Subject> Article::get_subjects() const
     return subjects_tmp;
 };
 
-Article::Builder::Builder(string title, 
-    string doi, 
-    std::vector<std::reference_wrapper<const Journal>> journals,
-    std::vector<Author> authors):
+Article::Builder::Builder(string &&title, 
+    string &&doi, 
+    cref_vec<Journal> &&journals,
+    std::vector<Author> &&authors):
     doi_b(std::move(doi)), 
     title_b(std::move(title)), 
     journals_b(std::move(journals)),
@@ -265,9 +275,9 @@ Article::Article(Builder b):
     doi(std::move(b.doi_b)), 
     title(std::move(b.title_b)), 
     type(b.type_b), 
-    published(b.published_b),
+    published(std::move(b.published_b)),
     score(b.score_b), 
-    issued(b.issued_b), 
+    issued(std::move(b.issued_b)), 
     volume(b.volume_b), 
     issue(b.issue_b), 
     ct_numbers(std::move(b.ct_numbers_b)), 
