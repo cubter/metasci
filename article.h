@@ -4,6 +4,8 @@
  * See COPYING.txt in the project root for license information.
  */
 
+// TODO: passing params as references instead of moving them?
+
 #ifndef ARTICLE_H
     #define ARTICLE_H
 #endif

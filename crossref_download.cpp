@@ -20,7 +20,6 @@
 #include <string>
 #include <vector>
 #include <unordered_set>
-#include <random>
 #include <regex>
 
 using Author                = metasci::Author;
@@ -81,14 +80,14 @@ int main(int argc, char const *argv[])
     std::ifstream inf(argv[1]);
     if (!inf)
     {
-        cerr << "Couldn't open test.json. Aborting" << endl;
+        cerr << "Couldn't open Crossref's json file. Aborting" << endl;
         return 1;
     }
 
     std::ofstream json_log_file("json_parser.log");
     if (!json_log_file)
     {
-        cerr << "Couldn't open json_parser.log. Aborting" << endl;
+        cerr << "Couldn't open/create json_parser.log. Aborting" << endl;
         return 1;
     }
 
