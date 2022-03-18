@@ -33,6 +33,7 @@ using Subject               = metasci::Subject;
 using Subject_hasher        = metasci::Subject_hasher;
 using Subject_comparator    = metasci::Subject_comparator;
 using Publisher             = metasci::Publisher;
+using json_log_vec          = std::vector<metasci::Json_logger>;
 
 using json                  = nlohmann::json;
 using article_vec           = std::vector<Article>;
@@ -52,8 +53,9 @@ int32_t Subject::max_id_ = 0;
 int32_t Author::max_id_ = 0;
 
 void 
-parse_crossref_json_files(std::ifstream &inf, 
-    std::ofstream &json_log_file, 
+parse_crossref_json(
+    json          &crossref_json,
+    json_log_vec  &json_logs, 
     journal_uset  &journals,
     article_vec   &articles, 
     subject_uset  &subjects);
@@ -91,16 +93,23 @@ int main(int argc, char const *argv[])
         return 1;
     }
 
+    // TODO: exception handling
+    json j = json::parse(inf);
+
     journal_uset journals;
     std::vector<Article> articles;
     std::vector<Author> authors;
     subject_uset subjects;
+    json_log_vec json_logs;
+
+    // std::cout << j.at("title").at(0) <<std::endl;
 
     auto t1 = std::chrono::high_resolution_clock::now();
-    parse_crossref_json_files(inf, json_log_file, journals, articles, subjects);
+    parse_crossref_json(j, json_logs, journals, articles, subjects);
     auto t2 = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> m_diff = t2 - t1;
     std::cout << "time, ms: " << m_diff.count() << std::endl;
+
 
     // for (auto &a : articles)
     // {
@@ -150,22 +159,18 @@ int main(int argc, char const *argv[])
 
 // TODO: add checking status, if it's ok, if no write log
 void 
-parse_crossref_json_files(
-    std::ifstream &inf, 
-    std::ofstream &json_log_file, 
+parse_crossref_json( 
+    json          &crossref_json,
+    json_log_vec  &json_logs, 
     journal_uset  &journals,
     article_vec   &articles,
     subject_uset  &subjects)
 {
-    std::vector<metasci::Json_logger> json_logs;
-
-    json crossref_file = json::parse(inf);
-
     json items;
 
     try
     {
-        items = crossref_file.at("items");
+        items = crossref_json.at("items");
     }
     catch(const json::exception &e)
     {
@@ -218,6 +223,7 @@ parse_crossref_json_files(
                 Journal j(std::move(el), std::move(publisher));
 
                 metasci::cond::Emplacer<journal_uset, journal_uset::iterator, Journal> emp;
+
                 auto emplace_res = emp.emplace_to(journals, std::forward<Journal>(j));
                 
                 journal_refs_tmp.emplace_back(*emplace_res.first);
@@ -227,7 +233,7 @@ parse_crossref_json_files(
         {
             json_logs.emplace_back(e.id, e.what(), "title: " + title);
         }
-        catch(...) 
+        catch(const json::exception &e)
         { }
 
         try
@@ -258,16 +264,15 @@ parse_crossref_json_files(
                 authors.emplace_back(std::move(el.at("given")), std::move(el.at("family")), std::move(orcid), is_auth_orcid);
                 
                 try
-                {
-                    json affiliations = el.at("affiliation");
-
-                    for (auto &aff : affiliations)
-                    {
-                        authors.back().add_affiliation(std::move(aff));
-                    }   
+                {                   
+                    authors.back().set_affiliations(std::move(el.at("affiliation")));  
                 }
+                catch(const json::type_error &e)
+                {
+                    json_logs.emplace_back(e.id, e.what(), "title: " + title);
+                }   
                 catch(const json::exception &e) 
-                { }  
+                { } 
             }
         }
         catch(const json::type_error &e)
@@ -387,12 +392,9 @@ parse_crossref_json_files(
         
         try
         {
-            json ct_num = item.at("clinical-trial-number");
+            json ct_nums = item.at("clinical-trial-number");
 
-            for (auto &el : ct_num)
-            {
-                article_b.ct_numbers_b.emplace_back(el);
-            }           
+            std::move(ct_nums.begin(), ct_nums.end(), std::back_inserter(article_b.ct_numbers_b));         
         }
         catch(const json::type_error &e)
         {
@@ -445,9 +447,4 @@ parse_crossref_json_files(
         
         articles.emplace_back(article_b.build());
     }  
-
-    for (auto &el : json_logs) 
-    {
-        el.write(json_log_file); 
-    }
 }

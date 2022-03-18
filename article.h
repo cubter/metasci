@@ -37,7 +37,8 @@ public:
     string  get_first_name() const { return first_name; }
     string  get_family_name() const { return family_name; }
     str_vec get_affiliations() const { return affiliations; }
-    void    add_affiliation(string &&aff) { affiliations.push_back(std::move(aff)); }
+    void    add_affiliation(string &&aff) { affiliations.emplace_back(std::move(aff)); }
+    void    set_affiliations(std::vector<string> &&aff);
 
     Author() { };
     Author(string &&first_name, string &&family_name);
@@ -47,6 +48,11 @@ public:
         bool is_authenticated_orcid); 
     ~Author() { };
 };
+
+void Author::set_affiliations(std::vector<string> &&aff)
+{
+    affiliations = std::move(aff);
+}
 
 Author::Author(string &&first_name, 
     string &&family_name): 
