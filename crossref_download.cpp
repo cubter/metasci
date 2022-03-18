@@ -46,6 +46,7 @@ using std::endl;
 using std::cout;
 using std::cerr;
 
+// Setting static IDs of classes
 int32_t Journal::max_id_ = 0;
 int32_t Article::max_id_ = 0;
 int32_t Publisher::max_id_ = 0;
@@ -65,20 +66,6 @@ int main(int argc, char const *argv[])
     string url_prefix = "https://api.crossref.org/works?rows=1000&select=DOI,title,author,publisher,published-online,container-title,score,issued,subject,published,volume,clinical-trial-number,references-count&cursor=*";
     string url_suffix = "";
     
-    // str_vec urls;
-    
-    // const string tls_v = "1.2";
-
-    // cpr::SslOptions ssl_opts = cpr::Ssl(cpr::ssl::TLSv1_2{ });
-    // cpr::Response   resp     = cpr::Get(cpr::Url{ingred_url}, ssl_opts); 
-    // if (resp.status_code != 200) 
-    // {
-    //     cout << "Crossref's response error. Status code: " << resp.status_code << endl;
-    //     return 1;
-    // }
-
-    // json crossref_first_resp = json::parse(resp.text);
-
     std::ifstream inf(argv[1]);
     if (!inf)
     {
@@ -101,8 +88,6 @@ int main(int argc, char const *argv[])
     std::vector<Author> authors;
     subject_uset subjects;
     json_log_vec json_logs;
-
-    // std::cout << j.at("title").at(0) <<std::endl;
 
     auto t1 = std::chrono::high_resolution_clock::now();
     parse_crossref_json(j, json_logs, journals, articles, subjects);
@@ -157,7 +142,7 @@ int main(int argc, char const *argv[])
     return 0;
 }
 
-// TODO: add checking status, if it's ok, if no write log
+// TODO: add checking status, if it's ok, if no, write log
 void 
 parse_crossref_json( 
     json          &crossref_json,
@@ -244,6 +229,7 @@ parse_crossref_json(
 
             for (const auto &el : author)
             {
+            	// ORCID. Quite many authors lack it.
                 try
                 {              
                     auto cut_orcid = [&](string s)
@@ -263,6 +249,7 @@ parse_crossref_json(
 
                 authors.emplace_back(std::move(el.at("given")), std::move(el.at("family")), std::move(orcid), is_auth_orcid);
                 
+                // Author's affiliations; often left empty.
                 try
                 {                   
                     authors.back().set_affiliations(std::move(el.at("affiliation")));  
@@ -284,7 +271,7 @@ parse_crossref_json(
 
         auto article_b = Article::Builder(std::move(title), std::move(doi), std::move(journal_refs_tmp), std::move(authors));
 
-        // Issues are short, so small string optim-on will possibly be applied.
+        // Issues are short (usually, numbers encoded as strings), so no need to `move` them.
         try
         {
             article_b.issue_b = item.at("issue");
@@ -295,7 +282,8 @@ parse_crossref_json(
         }
         catch(const json::exception &e) 
         { }
-
+		
+		// Volumes are short as well.
         try
         {
             article_b.volume_b = item.at("volume");
@@ -307,6 +295,7 @@ parse_crossref_json(
         catch(const json::exception &e) 
         { }
         
+        // Types also.
         try
         {
             article_b.type_b = item.at("type");
@@ -317,7 +306,8 @@ parse_crossref_json(
         }
         catch(const json::exception &e) 
         { }
-
+		
+		// Same. See above.
         try
         {
             article_b.ref_by_num_b = item.at("is-referenced-by-count");
@@ -328,7 +318,8 @@ parse_crossref_json(
         }
         catch(const json::exception &e) 
         { }
-
+		
+		// Same. See above.
         try
         {
             article_b.ref_num_b = item.at("references-count");
@@ -390,6 +381,7 @@ parse_crossref_json(
         catch(const json::exception &e) 
         { }
         
+        // Clinical trial number is nothing else than NCT ID. 
         try
         {
             json ct_nums = item.at("clinical-trial-number");
@@ -402,7 +394,8 @@ parse_crossref_json(
         }
         catch(const json::exception &e) 
         { }
-
+		
+		// I prefer the date of online publication if it's present, since, well, it's an online era.
         try
         {
             bool is_published = item.contains("published-online"); 
@@ -428,7 +421,8 @@ parse_crossref_json(
         }
         catch(const json::exception &e) 
         { }
-
+		
+		// All the references in the publication.
         try
         {
             json references = item.at("reference");
