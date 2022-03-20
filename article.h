@@ -274,6 +274,15 @@ std::vector<Subject> Article::get_subjects() const
     return subjects_tmp;
 };
 
+std::unique_ptr<Article> Article::Builder::build()
+{ 
+    auto art_ptr = std::make_unique<Article>(Article(*this)); 
+
+    this->~Builder(); 
+    
+    return art_ptr; 
+};
+
 Article::Builder::Builder(string &&title, 
     string &&doi, 
     cref_vec<Journal> &&journals,
@@ -283,15 +292,6 @@ Article::Builder::Builder(string &&title,
     journals_b(std::move(journals)),
     authors_b(std::move(authors))
 { };
-
-std::unique_ptr<Article> Article::Builder::build()
-{ 
-    auto art_ptr = std::make_unique<Article>(Article(*this)); 
-
-    this->~Builder(); 
-    
-    return art_ptr; 
-};
 
 Article::Article(Builder &b) : 
     doi(std::move(b.doi_b)), 
