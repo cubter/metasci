@@ -439,6 +439,6 @@ parse_crossref_json(
         catch(const json::exception &e) 
         { }
         
-        articles.emplace_back(article_b.build());
+        articles.emplace_back(*article_b.build().get());
     }  
 }

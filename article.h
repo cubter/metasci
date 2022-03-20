@@ -14,6 +14,7 @@
 #include <string>
 #include <vector>
 #include <functional>
+#include <memory>
 
 using str_vec   = std::vector<std::string>;
 using string    = std::string;
@@ -22,6 +23,7 @@ namespace metasci
 {
 class Author
 {
+private:
     int32_t         id_;
     // From here, the max_id_ param. is required to track the 
     // currently assigned IDs. Every time an instance of Author is 
@@ -55,16 +57,15 @@ void Author::set_affiliations(std::vector<string> &&aff)
 }
 
 Author::Author(string &&first_name, 
-    string &&family_name): 
+    string &&family_name) : 
     first_name(std::move(first_name)), 
     family_name(std::move(family_name)) 
 { };
 
-Author::Author(
-    string &&first_name, 
+Author::Author(string &&first_name, 
     string &&family_name, 
     string &&orcid, 
-    bool   is_authenticated_orcid): 
+    bool   is_authenticated_orcid) : 
     first_name(std::move(first_name)), 
     family_name(std::move(family_name)),
     orcid(std::move(orcid)),
@@ -77,6 +78,7 @@ private:
     int32_t         id_;
     static int32_t  max_id_;
     string          title;
+
 public:
     string  get_title() const { return title; };
 
@@ -85,18 +87,19 @@ public:
     virtual ~Publisher() { };
 };
 
-Publisher::Publisher(string &&title): 
+Publisher::Publisher(string &&title) : 
     title(std::move(title)) 
 { 
     id_ = ++max_id_; 
 };
 
-class Journal: public Publisher
+class Journal : public Publisher
 {
 private:
     int32_t         id_;
     static  int32_t max_id_;
     string          title;
+
 public:
     string get_title() const            { return title; }
     string get_publisher_title() const  { return(Publisher::get_title()); }
@@ -107,7 +110,7 @@ public:
     virtual ~Journal() { };
 };
 
-Journal::Journal(string &&title, string &&publisher_title):
+Journal::Journal(string &&title, string &&publisher_title) :
     title(std::move(title)), 
     Publisher(std::move(publisher_title)) 
 { 
@@ -153,7 +156,7 @@ public:
     ~Subject() {};
 };
 
-Subject::Subject(string title): 
+Subject::Subject(string title) : 
     title(title)
 { 
     id_ = ++max_id_; 
@@ -172,6 +175,11 @@ struct Subject_comparator
     {
         return (s1.get_title() == s2.get_title());
     }
+};
+
+enum class types 
+{
+    journal_article
 };
 
 template<typename T>
@@ -199,6 +207,7 @@ private:
     mutable cref_vec<Journal>   journals; 
     mutable cref_vec<Subject>   subjects;
     str_vec                     references;
+
 public:
     string                  get_title() const { return title; }
     std::vector<Journal>    get_journals() const;
@@ -227,7 +236,7 @@ public:
         std::vector<Author>         authors_b;
         std::vector<string>         references_b;
 
-        Article build() { return Article(*this); }
+        std::unique_ptr<Article> build();
 
         Builder(string &&title, 
             string &&doi, 
@@ -235,9 +244,7 @@ public:
             std::vector<Author> &&authors);
     };
     
-    // Article &operator =(const Article &) = delete;
-    // Article(const Article &other) = delete;
-    Article(Builder b);
+    Article(Builder &b);
 
     ~Article() { };
 };
@@ -270,14 +277,23 @@ std::vector<Subject> Article::get_subjects() const
 Article::Builder::Builder(string &&title, 
     string &&doi, 
     cref_vec<Journal> &&journals,
-    std::vector<Author> &&authors):
+    std::vector<Author> &&authors) :
     doi_b(std::move(doi)), 
     title_b(std::move(title)), 
     journals_b(std::move(journals)),
     authors_b(std::move(authors))
 { };
 
-Article::Article(Builder b): 
+std::unique_ptr<Article> Article::Builder::build()
+{ 
+    auto art_ptr = std::make_unique<Article>(Article(*this)); 
+
+    this->~Builder(); 
+    
+    return art_ptr; 
+};
+
+Article::Article(Builder &b) : 
     doi(std::move(b.doi_b)), 
     title(std::move(b.title_b)), 
     type(b.type_b), 
