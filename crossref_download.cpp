@@ -30,17 +30,13 @@ using Journal               = metasci::Journal;
 using Journal_hasher        = metasci::Journal_hasher;
 using Journal_comparator    = metasci::Journal_comparator;
 using Subject               = metasci::Subject;
-using Subject_hasher        = metasci::Subject_hasher;
-using Subject_comparator    = metasci::Subject_comparator;
+using subj_vec              = std::vector<Subject>;
 using Publisher             = metasci::Publisher;
 using json_log_vec          = std::vector<metasci::Json_logger>;
-
 using json                  = nlohmann::json;
 using article_vec           = std::vector<Article>;
 using journal_uset          = 
     std::unordered_set<Journal, Journal_hasher, Journal_comparator>;
-using subject_uset          = 
-    std::unordered_set<Subject, Subject_hasher, Subject_comparator>;
 
 using std::endl;
 using std::cout;
@@ -50,21 +46,20 @@ using std::cerr;
 int32_t Journal::max_id_ = 0;
 int32_t Article::max_id_ = 0;
 int32_t Publisher::max_id_ = 0;
-int32_t Subject::max_id_ = 0;
 int32_t Author::max_id_ = 0;
+metasci::subj_id Subject::max_id_ = 0;
 
 void 
-parse_crossref_json(
-    json          &crossref_json,
+parse_crossref_json(json &crossref_json,
     json_log_vec  &json_logs, 
     journal_uset  &journals,
     article_vec   &articles, 
-    subject_uset  &subjects);
+    subj_vec      &subjects);
 
 int main(int argc, char const *argv[])
 {
-    string url_prefix = "https://api.crossref.org/works?rows=1000&select=DOI,title,author,publisher,published-online,container-title,score,issued,subject,published,volume,clinical-trial-number,references-count&cursor=*";
-    string url_suffix = "";
+    // string url_prefix = "https://api.crossref.org/works?rows=1000&select=DOI,title,author,publisher,published-online,container-title,score,issued,subject,published,volume,clinical-trial-number,references-count&cursor=*";
+    // string url_suffix = "";
     
     std::ifstream inf(argv[1]);
     if (!inf)
@@ -86,8 +81,11 @@ int main(int argc, char const *argv[])
     journal_uset journals;
     std::vector<Article> articles;
     std::vector<Author> authors;
-    subject_uset subjects;
     json_log_vec json_logs;
+    // You may ask, why didn't I define the subjects vector in the corresp. 
+    // article file, like the publication types? Because I've no idea what 
+    // subjects there are. Crossref doesn't provide a full list of 'em.  
+    std::vector<Subject> subjects;
 
     auto t1 = std::chrono::high_resolution_clock::now();
     parse_crossref_json(j, json_logs, journals, articles, subjects);
@@ -144,12 +142,11 @@ int main(int argc, char const *argv[])
 
 // TODO: add checking status, if it's ok, if no, write log
 void 
-parse_crossref_json( 
-    json          &crossref_json,
+parse_crossref_json(json &crossref_json,
     json_log_vec  &json_logs, 
     journal_uset  &journals,
     article_vec   &articles,
-    subject_uset  &subjects)
+    subj_vec      &subjects)
 {
     json items;
 
@@ -159,7 +156,7 @@ parse_crossref_json(
     }
     catch(const json::exception &e)
     {
-        std::cerr << e.what() << '\n';
+        json_logs.emplace_back(e.id, e.what(), "items missing");
         return;
     }
 
@@ -173,7 +170,10 @@ parse_crossref_json(
 
         try
         {
-            title = item.at("title").at(0);
+            // Nlohmann's JSON lib. supports implicit conversions, so 
+            // item.at("title").at(0), although of json type, will be
+            // converted to string.
+            title = std::move(item.at("title").at(0));
         }
         catch(const json::exception &e)
         {
@@ -182,7 +182,7 @@ parse_crossref_json(
 
         try
         {
-            doi = item.at("DOI");
+            doi = std::move(item.at("DOI"));
         }
         catch(const json::exception &e)
         {
@@ -191,7 +191,7 @@ parse_crossref_json(
 
         try
         {
-            publisher = item.at("publisher");
+            publisher = std::move(item.at("publisher"));
         }
         catch(const json::exception &e)
         {
@@ -201,11 +201,11 @@ parse_crossref_json(
         // Journals' titles. 
         try
         {
-            auto container_title = item.at("container-title");
+            json container_titles = item.at("container-title");
 
-            for (auto &el : container_title)
+            for (auto &ct : container_titles)
             {
-                Journal j(std::move(el), std::move(publisher));
+                Journal j(std::move(ct), std::move(publisher));
 
                 metasci::cond::Emplacer<journal_uset, journal_uset::iterator, Journal> emp;
 
@@ -223,22 +223,23 @@ parse_crossref_json(
 
         try
         {
-            json    author = item.at("author");    
+            json    local_authors = item.at("author");    
             string  orcid; 
             bool    is_auth_orcid;
 
-            for (const auto &el : author)
+            for (const auto &loc_a : local_authors)
             {
-            	// ORCID. Quite many authors lack it.
                 try
-                {              
-                    auto cut_orcid = [&](string s)
+                {        
+                    // ORCID is an author's unique ID. Quite many authors lack 
+                    // it.      
+                    auto cut_orcid = [&](string s) 
                     {  
                         return string{s.begin() + s.find_first_not_of("http://orcid.org/"), s.end()};
                     };
 
-                    orcid = cut_orcid(el.at("ORCID"));
-                    is_auth_orcid = el.at("authenticated-orcid");
+                    orcid = cut_orcid(loc_a.at("ORCID"));
+                    is_auth_orcid = loc_a.at("authenticated-orcid");
                 }
                 catch(const json::type_error &e)
                 {
@@ -247,12 +248,16 @@ parse_crossref_json(
                 catch(const json::exception &e) 
                 { }   
 
-                authors.emplace_back(std::move(el.at("given")), std::move(el.at("family")), std::move(orcid), is_auth_orcid);
+                authors.emplace_back(std::move(loc_a.at("given")), 
+                    std::move(loc_a.at("family")), 
+                    std::move(orcid), 
+                    is_auth_orcid);
                 
                 // Author's affiliations; often left empty.
                 try
                 {                   
-                    authors.back().set_affiliations(std::move(el.at("affiliation")));  
+                    authors.back().set_affiliations(
+                        std::move(loc_a.at("affiliation")));  
                 }
                 catch(const json::type_error &e)
                 {
@@ -269,11 +274,15 @@ parse_crossref_json(
         catch(const json::exception &e) 
         { }
 
-        auto article_b = Article::Builder(std::move(title), std::move(doi), std::move(journal_refs_tmp), std::move(authors));
+        auto article_b = Article::Builder(std::move(title), 
+            std::move(doi), 
+            std::move(journal_refs_tmp), 
+            std::move(authors));
 
-        // Issues are short (usually, numbers encoded as strings), so no need to `move` them.
         try
         {
+            // Issues are short (usually, numbers encoded as strings), so no 
+            // need to `move` them.
             article_b.issue_b = item.at("issue");
         }
         catch(const json::type_error &e)
@@ -283,9 +292,9 @@ parse_crossref_json(
         catch(const json::exception &e) 
         { }
 		
-		// Volumes are short as well.
         try
         {
+            // Volumes are short strings as well.
             article_b.volume_b = item.at("volume");
         }
         catch(const json::type_error &e)
@@ -295,10 +304,18 @@ parse_crossref_json(
         catch(const json::exception &e) 
         { }
         
-        // Types also.
         try
         {
-            article_b.type_b = item.at("type");
+            // Types are also short.
+            string type = item.at("type");
+            
+            auto it = 
+                std::find(metasci::publication_types.begin(), metasci::publication_types.end(), type);
+            
+            if (it != metasci::publication_types.end())
+            {
+                article_b.type_b = it->id;
+            }
         }
         catch(const json::type_error &e)
         {
@@ -307,9 +324,9 @@ parse_crossref_json(
         catch(const json::exception &e) 
         { }
 		
-		// Same. See above.
         try
         {
+            // Same. See above.
             article_b.ref_by_num_b = item.at("is-referenced-by-count");
         }
         catch(const json::type_error &e)
@@ -319,9 +336,9 @@ parse_crossref_json(
         catch(const json::exception &e) 
         { }
 		
-		// Same. See above.
         try
         {
+            // Same. See above.
             article_b.ref_num_b = item.at("references-count");
         }
         catch(const json::type_error &e)
@@ -349,7 +366,7 @@ parse_crossref_json(
     
         try
         {           
-            auto score = item.at("score");
+            json score = item.at("score");
             if (!score.is_null()) 
             {
                 article_b.score_b = score;
@@ -364,15 +381,30 @@ parse_crossref_json(
 
         try
         {
-            json subject = item.at("subject");
+            // The full list of subjects is not provided by Crossref; hence, 
+            // it's updated during the parsing.
+            json local_subjects = item.at("subject");
 
-            for (const auto &el : subject)
+            for (auto &local_subj : local_subjects)
             {
-                metasci::cond::Emplacer<subject_uset, subject_uset::iterator, Subject> emp;
-                auto emplace_res = emp.emplace_to(subjects, std::forward<Subject>(el));
-                
-                article_b.subjects_b.emplace_back(*emplace_res.first);
-            }          
+                string local_subj_str = local_subj; 
+
+                auto it = std::find(subjects.begin(), subjects.end(), 
+                    local_subj_str);
+
+                // If there already exists such subject in the global pool of 
+                // subjects, add its ID to the article builder's subject list,
+                if (it != subjects.end())
+                {
+                    article_b.subjects_ids_b.push_back(it->get_id());
+                }
+                // otherwise, firstly, add a new subject to the pool.
+                else
+                {
+                    subjects.emplace_back(local_subj_str);
+                    article_b.subjects_ids_b.push_back(subjects.back().get_id()); 
+                }
+            }      
         }
         catch(const json::type_error &e)
         {
@@ -381,9 +413,9 @@ parse_crossref_json(
         catch(const json::exception &e) 
         { }
         
-        // Clinical trial number is nothing else than NCT ID. 
         try
         {
+            // Clinical trial number is nothing else than NCT ID. 
             json ct_nums = item.at("clinical-trial-number");
 
             std::move(ct_nums.begin(), ct_nums.end(), std::back_inserter(article_b.ct_numbers_b));         
@@ -395,24 +427,25 @@ parse_crossref_json(
         catch(const json::exception &e) 
         { }
 		
-		// I prefer the date of online publication if it's present, since, well, it's an online era.
+		// I prefer the date of online publication if it's present, since, 
+        // well, it's an online era.
         try
         {
             bool is_published = item.contains("published-online"); 
-            json published;
+            json published_dates;
 
             if (!is_published)
             {
-                published = item.at("published-print").at("date-parts");
+                published_dates = item.at("published-print").at("date-parts");
             }
             else
             {
-                published = item.at("published-online").at("date-parts");
+                published_dates = item.at("published-online").at("date-parts");
             }
 
-            for (auto &el : published)
+            for (auto &pd : published_dates)
             {
-                article_b.published_b.emplace_back(Date{el.at(0), el.at(1), el.at(2)});
+                article_b.published_b.emplace_back(Date{pd.at(0), pd.at(1), pd.at(2)});
             }
         }
         catch(const json::type_error &e)
