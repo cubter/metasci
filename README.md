@@ -2,7 +2,7 @@
 
 This is work in progress. 
 - ORC support is yet to be done.
-- Asynchrous download from Crossref is to be implemented as well.
+- Asynchronous download from Crossref is to be implemented.
 
 MetaSci is a project aimed at [downloading and] and parsing Crossref's JSONs, containing 
 scientific publications metadata. Crossref is one of the leading registration authorities,
