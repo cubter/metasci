@@ -16,18 +16,19 @@
 #include <functional>
 #include <memory>
 
-using str_vec   = std::vector<std::string>;
-using string    = std::string;
-
 namespace metasci
 {
+using str_vec       = std::vector<std::string>;
+using string        = std::string;
+using pub_type_id   = int8_t;
+using subj_id       = int16_t;
+
 class Author
 {
 private:
     int32_t         id_;
-    // From here, the max_id_ param. is required to track the 
-    // currently assigned IDs. Every time an instance of Author is 
-    // created, max_id_ is incremented.
+    // From here on, the max_id_ param. is to track the currently assigned IDs. 
+    // Every time an instance of Author is created, max_id_ is incremented.
     static int32_t  max_id_; 
     string          orcid;
     bool            is_auth_orcid;
@@ -139,33 +140,32 @@ struct Date
     uint8_t     day;
 };
 
-using pub_type_id = int8_t;
+using date_vec = std::vector<Date>;
 
-struct Publication_type
+
+class Publication_type
 {
-    string      crossref_id;
-    pub_type_id id;
+private:
+    string              crossref_id;
+    pub_type_id         id;
+    static pub_type_id  max_id_;
 
+public:
+    pub_type_id get_id() const { return id; };
     bool operator==(const Publication_type &other);
     Publication_type(string crossref_id);
-    Publication_type(string crossref_id, pub_type_id internal_id);
 };
 
 Publication_type::Publication_type(string crossref_id) :
     crossref_id(crossref_id) 
-{ };
-
-Publication_type::Publication_type(string crossref_id, pub_type_id internal_id) 
-: crossref_id(crossref_id), 
-id(internal_id)
-{ };
+{
+    id = ++max_id_;
+};
 
 bool Publication_type::operator==(const Publication_type &other)
 {
     return crossref_id == other.crossref_id;
 };
-
-using subj_id = int16_t;
 
 class Subject
 {
@@ -191,43 +191,6 @@ Subject::Subject(string subj_title) :
     id = ++max_id_;
 };
 
-// Pulication types: crossref's ID/name, id.
-// Integer IDs instead of the Crossref's ones are to reduce space consumption. 
-std::vector<Publication_type> publication_types
-{
-    { "book_section", 1         },
-    { "monograph", 2            },
-    { "report", 3               },
-    { "peer_review", 4          },
-    { "book_track", 5           },
-    { "journal_article", 6      },
-    { "book_part", 7            },
-    { "other", 8                },
-    { "book", 9                 },
-    { "journal_volume", 10      },
-    { "book_set", 11            },
-    { "reference_entry", 12     },
-    { "proceedings_article", 13 },
-    { "journal", 14             },
-    { "component", 15           },
-    { "book_chapter", 16        },
-    { "proceedings_series", 17  },
-    { "report_series", 18       },
-    { "proceedings", 19         },
-    { "standard", 20            },
-    { "reference_book", 21      },
-    { "posted_content", 22      },
-    { "journal_issue", 23       },
-    { "dissertation", 24        },
-    { "grant", 25               },
-    { "dataset", 26             },
-    { "book_series", 27         },
-    { "edited_book", 28         },
-    { "standard_series", 29     }
-};
-
-using date_vec = std::vector<Date>;
-
 template<typename T>
 using cref_vec = std::vector<std::reference_wrapper<const T>>;
 
@@ -251,9 +214,8 @@ private:
     int32_t         ref_by_num; 
     str_vec         references;
     // I've decided to use subjects' IDs instead of references to Subjects
-    // for the reason of space optimization: unlike Journal, Subject is quite 
-    // a simple class, and there are not so many subjects out there. Hence, I 
-    // don't see the need for the references here. 
+    // for the reason of space optimization: unlike Journals, there are not so 
+    // many subjects out there. Hence, I don't see the need for references here 
     std::vector<subj_id>        subjects_ids;
     std::vector<Author>         authors;
     mutable cref_vec<Journal>   journals; 
