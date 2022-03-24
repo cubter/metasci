@@ -8,13 +8,10 @@
 #include "conditional.h"
 #include "article.h"
 #include "logger.h"
-// #include "orc/OrcFile.hh"
 
 #define JSON_DIAGNOSTICS 1
 
-#include "nlohmann/json.hpp"
-#include "cpr/cpr.h"
-
+#include <nlohmann/json.hpp>
 #include <iostream>
 #include <fstream>
 #include <string>

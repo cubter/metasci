@@ -3,9 +3,6 @@
  * 
  * See COPYING.txt in the project root for license information.
  */
-
-// TODO: passing params as references instead of moving them?
-
 #ifndef ARTICLE_H
     #define ARTICLE_H
 #endif
@@ -302,11 +299,11 @@ std::vector<Journal> Article::get_journals() const
 
 std::unique_ptr<Article> Article::Builder::build()
 { 
-    auto art_ptr = std::make_unique<Article>(Article(*this)); 
+    auto article_ptr = std::make_unique<Article>(Article(*this)); 
 
     this->~Builder(); 
     
-    return art_ptr; 
+    return article_ptr; 
 };
 
 Article::Builder::Builder(string &&title, 
