@@ -16,3 +16,12 @@ The main file is `crossref_parser.cpp`. Most of the required declarations and de
 are contained in `article.h` (yes, I use it as a mix of a header and a source file, and I
 know it's a non-standard approach; however, I think it's justified by the project's 
 size). 
+
+## Building
+
+Use `Cmake` to build the project: in the project's root directory execute
+```bash
+cmake . 
+cmake --build .
+```
+
