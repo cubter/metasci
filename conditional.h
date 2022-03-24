@@ -4,11 +4,12 @@
  * See COPYING.txt in the project root for license information.
  */
 
-// This is really an optional part, and it'd be probably more efficient to 
-// define which functions to use based on preprocessor directives, because the 
-// whole point of `try_emplace` is not to construct the object if the same key 
-// already exists; and it's missing here, as the object is passed using 
-// move semantics.
+// This is an optional part, in which I just wanted to learn to use SFINAE.
+// 
+// It'd be probably more efficient to define which functions to use 
+// based on preprocessor directives, because the whole point of `try_emplace` 
+// is not to construct the value if the same key already exists -- and it's 
+// missing here, as the object is passed using `move` semantics.
 #include <iostream>
 #include <unordered_map>
 
@@ -29,8 +30,8 @@ template<typename T, typename... Val>
 struct can_try_emplace : decltype(check<T, Val...>(0)) 
 { };
 
-// If unordered set is in use, or if it's unordered map and 'the files were compiled 
-// with C++ < 17, `emplace()` will be used. otherwise `try_emplace()` will be applied.
+// If unordered set is in use, or if it's unordered map and the files were 
+// compiled with C++ < 17, `emplace` will be used, otherwise -- `try_emplace`.
 template<typename Container, typename Iterator, typename... Val>
 struct Emplacer
 { 

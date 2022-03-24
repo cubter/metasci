@@ -40,7 +40,6 @@ using article_vec           = std::vector<Article>;
 using journal_uset          = 
     std::unordered_set<Journal, Journal_hasher, Journal_comparator>;
 
-
 using std::endl;
 using std::cout;
 using std::cerr;
@@ -118,7 +117,7 @@ int main(int argc, char const *argv[])
     }
     catch(const std::exception& e)
     {
-        std::cerr << e.what() << '\n';
+        cerr << e.what() << '\n';
         return 1;
     }
 
@@ -139,10 +138,11 @@ void usage(int argc)
 {
     if (argc != 2)
     {
-        std::cerr << "Wrong input. Usage: ./crossref_download <file_name>" << std::endl;
+        cerr << "Wrong input. Usage: crossref_download <file_name>" << endl;
     }
 }
 
+// Parses Crossref's JSONs.
 void parse_crossref_json(json &crossref_json,
     json_log_vec  &json_logs, 
     journal_uset  &journals,
@@ -150,7 +150,7 @@ void parse_crossref_json(json &crossref_json,
     subject_vec   &subjects,
     pub_type_vec  &publication_types)
 {
-    json items;
+    json items; // the highest level structure
 
     try
     {
@@ -167,7 +167,7 @@ void parse_crossref_json(json &crossref_json,
         string title;
         string doi;
         string publisher;
-        metasci::cref_vec<Journal>  journal_refs_tmp;
+        metasci::cref_vec<Journal>  journal_refs;
         std::vector<Author>         authors;
 
         try
@@ -215,7 +215,7 @@ void parse_crossref_json(json &crossref_json,
 
                 auto emplace_res = emp.emplace_to(journals, std::forward<Journal>(j));
                 
-                journal_refs_tmp.emplace_back(*emplace_res.first);
+                journal_refs.emplace_back(*emplace_res.first);
             }
         }
         catch(const json::type_error &e)
@@ -223,8 +223,9 @@ void parse_crossref_json(json &crossref_json,
             json_logs.emplace_back(e.id, std::move(e.what()), "title: " + title);
         }
         // There will be a lot out of range errors, since many elements may be 
-        // absent in the specific json file. I don't need to catch them -- I'm 
-        // only interested in type errors, -- hence the body is empty.
+        // absent in the concrete json file. I don't need to catch them -- I'm 
+        // only interested in type errors, -- hence the body is empty. Same 
+        // applies below
         catch(const json::exception &e)
         { }
 
@@ -285,7 +286,7 @@ void parse_crossref_json(json &crossref_json,
 
         auto article_b = Article::Builder(std::move(title), 
             std::move(doi), 
-            std::move(journal_refs_tmp), 
+            std::move(journal_refs), 
             std::move(authors));
 
         try
@@ -449,7 +450,9 @@ void parse_crossref_json(json &crossref_json,
         try
         {
             bool is_published = item.contains("published-online"); 
-            json published_dates;
+            // published-online is an array, so there may be several dates. 
+            // Note: I'm not sure what that means in practice.
+            json published_dates; 
 
             if (!is_published)
             {
@@ -473,10 +476,9 @@ void parse_crossref_json(json &crossref_json,
         catch(const json::exception &e) 
         { }
 		
-		// Lis of references.
         try
         {
-            json references = item.at("reference");
+            json references = item.at("reference"); // list of references
 
             for (auto &el : references)
             {
