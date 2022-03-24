@@ -12,7 +12,7 @@ suitable for download to Hadoop or BigQuery. I'm also going to use them for BI l
 
 ## Sources
 
-The main file is crossref_parse.cpp. Most of the required declarations and definitions
-are contained in article.h (yes, I use it as a mix of header and source files, and I
+The main file is `crossref_parser.cpp`. Most of the required declarations and definitions
+are contained in `article.h` (yes, I use it as a mix of a header and a source file, and I
 know it's a non-standard approach; however, I think it's justified by the project's 
 size). 
