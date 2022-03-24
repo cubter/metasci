@@ -10,7 +10,7 @@ set(nlohmann_json_DIR ${PROJECT_SOURCE_DIR}/thirdparty/share/nlohmann_json)
 include_directories(${PROJECT_SOURCE_DIR})
 include_directories(AFTER SYSTEM ${PROJECT_SOURCE_DIR}/thirdparty/include/)
 
-add_executable(metaSci crossref_download.cpp)  
+add_executable(metaSci crossref_parser.cpp)  
 
 find_package(nlohmann_json REQUIRED)
 
