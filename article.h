@@ -24,23 +24,27 @@ using subject_id    = int16_t;
 class Author
 {
 public:
-    string  inline get_first_name() const { return first_name; }
-    string  inline get_family_name() const { return family_name; }
-    str_vec inline get_affiliations() const { return affiliations; }
-    void    inline add_affiliation(string aff);
-    void    inline set_affiliations(str_vec &&aff);
-    void    inline set_affiliations(const str_vec &aff);
+    // Methods.
+    string      get_first_name() const { return first_name; }
+    string      get_family_name() const { return family_name; }
+    str_vec     get_affiliations() const { return affiliations; }
+    inline void add_affiliation(string aff);
+    inline void set_affiliations(str_vec &&aff);
+    inline void set_affiliations(const str_vec &aff);
 
+    // Operators.
+    Author   &operator=(Author &&other)         = default;
+    Author   &operator=(const Author &other)    = default; 
+
+    // Constructors.
     Author() {};
     Author(string first_name, string family_name);
     Author(string first_name, 
         string family_name, 
         string orcid, 
         bool is_authenticated_orcid); 
-    Author(Author &&other)                  = default;
-    Author &operator=(Author &&other)       = default;
-    Author(const Author &other)             = default;
-    Author &operator=(const Author &other)  = default;   
+    Author(Author &&other)      = default;
+    Author(const Author &other) = default;  
     ~Author() {};
 
 private:
@@ -59,19 +63,20 @@ private:
 };
 
 // Adds an afiiliation to the list.
-void Author::add_affiliation(string aff) 
+inline void Author::add_affiliation(string aff) 
 { 
     affiliations.emplace_back(std::move(aff)); 
 };
 // Sets Author's affilitations.
-void Author::set_affiliations(str_vec &&aff)
+inline void Author::set_affiliations(str_vec &&aff)
 {
     affiliations = std::move(aff);
 };
-void Author::set_affiliations(const str_vec &aff)
+inline void Author::set_affiliations(const str_vec &aff)
 {
     affiliations = aff;
 };
+
 // Constructor for an author having no ORCID.
 Author::Author(string first_name, 
     string family_name) : 
@@ -94,14 +99,18 @@ Author::Author(string first_name,
 class Publisher
 {
 public:
-    string inline get_title() const { return title; };
+    // Methods.
+    string get_title() const { return title; };
+    
+    // Operators.
+    Publisher &operator=(Publisher &&other)      = default;
+    Publisher &operator=(const Publisher &other) = default;
 
+    // Constructors.
     Publisher() {};
     Publisher(string title);
-    Publisher(Publisher &&other)                    = default;
-    Publisher &operator=(Publisher &&other)         = default;
-    Publisher(const Publisher &other)               = default;
-    Publisher &operator=(const Publisher &other)    = default;
+    Publisher(Publisher &&other)        = default;
+    Publisher(const Publisher &other)   = default;
     virtual ~Publisher() {};
 
 private:
@@ -123,15 +132,19 @@ Publisher::Publisher(string title) :
 class Journal : public Publisher
 {
 public:
-    string inline get_title() const           { return title; }
-    string inline get_publisher_title() const { return Publisher::get_title(); }
+    // Methods.
+    inline string get_title() const           { return title; }
+    inline string get_publisher_title() const { return Publisher::get_title(); }
+    
+    // Operators.
+    Journal &operator=(Journal &&other)         = default;
+    Journal &operator=(const Journal &other)    = default;
 
+    // Constructors.
     Journal() {};
     Journal(string title, string publisher_title);
-    Journal(Journal &&other)                    = default;
-    Journal &operator=(Journal &&other)         = default;
-    Journal(const Journal &other)               = default;
-    Journal &operator=(const Journal &other)    = default;
+    Journal(Journal &&other)        = default;
+    Journal(const Journal &other)   = default;
     virtual ~Journal() {};
 private:
     int32_t         id; // my own id
@@ -170,22 +183,25 @@ struct Date
     uint8_t     month;
     uint8_t     day;
 };
-
 using date_vec = std::vector<Date>;
 
 // Publication type. As of 2021, there are 29 publication types.
 class Publication_type
 {
 public:
-    pub_type_id inline get_id() const { return id; };
-    bool               operator==(const Publication_type &other);
+    // Methods.
+    pub_type_id get_id() const { return id; };
+    
+    // Operators.
+    inline bool      operator==(const Publication_type &other);
+    Publication_type &operator=(Publication_type &&other)       = default;
+    Publication_type &operator=(const Publication_type &other)  = default; 
 
+    // Constructors.
     Publication_type() {};
     Publication_type(string crossref_id); 
     Publication_type(const Publication_type &other)             = default; 
-    Publication_type &operator=(const Publication_type &other)  = default; 
     Publication_type(Publication_type &&other)                  = default; 
-    Publication_type &operator=(Publication_type &&other)       = default;
 
 private:
     string              crossref_id;    // journal-article etc.
@@ -200,7 +216,7 @@ Publication_type::Publication_type(string crossref_id) :
     // id is incremeted, and the instance receives an ID.
     id = ++max_id_;
 };
-bool Publication_type::operator==(const Publication_type &other)
+inline bool Publication_type::operator==(const Publication_type &other)
 {
     return crossref_id == other.crossref_id;
 };
@@ -209,15 +225,19 @@ bool Publication_type::operator==(const Publication_type &other)
 class Subject
 {
 public:
-    subject_id inline   get_id() const { return id; };
-    bool                operator==(const Subject &other);
+    // Methods; 
+    subject_id get_id() const { return id; };
     
+    // Operators.
+    inline bool operator==(const Subject &other);
+    Subject     &operator=(const Subject &other)    = default; 
+    Subject     &operator=(Subject &&other)         = default;
+
+    // Constructors.
     Subject() {};
     Subject(string title);
-    Subject(const Subject &other)               = default; 
-    Subject &operator=(const Subject &other)    = default; 
-    Subject(Subject &&other)                    = default; 
-    Subject &operator=(Subject &&other)         = default;
+    Subject(const Subject &other) = default; 
+    Subject(Subject &&other)      = default; 
 
 private:
     subject_id          id;  // my own id
@@ -225,7 +245,7 @@ private:
     string              title;
 };
 
-bool Subject::operator==(const Subject &other)
+inline bool Subject::operator==(const Subject &other)
 {
     return title == other.title;
 };
@@ -242,14 +262,8 @@ using cref_vec = std::vector<std::reference_wrapper<const T>>;
 
 class Article
 {
-public:
-    string inline           get_title() const { return title; };
-    string inline           get_doi() const { return doi; };
-    pub_type_id inline      get_type() const { return type; };
-    std::vector<Author>     inline get_authors() const { return authors; };
-    std::vector<subject_id> inline get_subjects_ids() const { return subjects_ids; };
-    std::vector<Journal>    inline get_journals() const;
-
+public:    
+    // Builder's class.
     // I'm aware that it's a non-standard solution to implement
     // a builder class. However, in this case I've decided to stick to it,
     // since I've got a rel. simple inheritance in general and don't really see 
@@ -287,13 +301,24 @@ public:
             const std::vector<Author> &authors);
         ~Builder() {};
     };
+
+    // Methods.
+    string       get_title() const  { return title; };
+    string       get_doi() const    { return doi; };
+    pub_type_id  get_type() const   { return type; };
+    std::vector<Author>     get_authors() const         { return authors; };
+    std::vector<subject_id> get_subjects_ids() const    { return subjects_ids; };
+    inline std::vector<Journal> get_journals() const;
+
+    // Operators.
+    Article &operator=(Article &&other)      = default;
+    Article &operator=(const Article &other) = delete;
     
+    // Constructors.
     Article(Builder &b);
-    Article(Article &&other)                    = default;
-    Article &operator=(Article &&other)         = default;
-    Article(const Article &other)               = delete;
-    Article &operator=(const Article &other)    = delete;
-    Article()                                   = delete;
+    Article(Article &&other)        = default;
+    Article(const Article &other)   = delete;
+    Article()                       = delete;
     ~Article() {};
 
 private:
@@ -323,8 +348,8 @@ private:
     cref_vec<Journal>       journals;  // references to journals
 };
 
-// Gets a lost of journals the article has been published in.
-std::vector<Journal> Article::get_journals() const 
+// Gets the names of the journals the article has been published in.
+inline std::vector<Journal> Article::get_journals() const 
 {  
     std::vector<Journal> jret;
 
@@ -335,12 +360,13 @@ std::vector<Journal> Article::get_journals() const
 
     return jret;
 };
+
 // Builds an article from builder, calling builder's destructor afterwards. 
 Article Article::Builder::build()
 { 
     Article a(*this); 
     this->~Builder(); 
-    
+
     return a; 
 };
 // Builder's ctor with vectors as rvalues.
