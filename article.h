@@ -37,6 +37,10 @@ public:
         string family_name, 
         string orcid, 
         bool is_authenticated_orcid); 
+    Author(Author &&other)                  = default;
+    Author &operator=(Author &&other)       = default;
+    Author(const Author &other)             = default;
+    Author &operator=(const Author &other)  = default;   
     ~Author() {};
 
 private:
@@ -68,11 +72,13 @@ void Author::set_affiliations(const str_vec &aff)
 {
     affiliations = aff;
 };
+// Constructor for an author having no ORCID.
 Author::Author(string first_name, 
     string family_name) : 
     first_name(std::move(first_name)), 
     family_name(std::move(family_name)) 
 {};
+// Constructor for an author having ORCID.
 Author::Author(string first_name, 
     string family_name, 
     string orcid, 
@@ -90,8 +96,12 @@ class Publisher
 public:
     string inline get_title() const { return title; };
 
-    Publisher();
+    Publisher() {};
     Publisher(string title);
+    Publisher(Publisher &&other)                    = default;
+    Publisher &operator=(Publisher &&other)         = default;
+    Publisher(const Publisher &other)               = default;
+    Publisher &operator=(const Publisher &other)    = default;
     virtual ~Publisher() {};
 
 private:
@@ -118,6 +128,10 @@ public:
 
     Journal() {};
     Journal(string title, string publisher_title);
+    Journal(Journal &&other)                    = default;
+    Journal &operator=(Journal &&other)         = default;
+    Journal(const Journal &other)               = default;
+    Journal &operator=(const Journal &other)    = default;
     virtual ~Journal() {};
 private:
     int32_t         id; // my own id
@@ -164,8 +178,14 @@ class Publication_type
 {
 public:
     pub_type_id inline get_id() const { return id; };
-    bool operator==(const Publication_type &other);
-    Publication_type(string crossref_id);
+    bool               operator==(const Publication_type &other);
+
+    Publication_type() {};
+    Publication_type(string crossref_id); 
+    Publication_type(const Publication_type &other)             = default; 
+    Publication_type &operator=(const Publication_type &other)  = default; 
+    Publication_type(Publication_type &&other)                  = default; 
+    Publication_type &operator=(Publication_type &&other)       = default;
 
 private:
     string              crossref_id;    // journal-article etc.
@@ -189,12 +209,18 @@ bool Publication_type::operator==(const Publication_type &other)
 class Subject
 {
 public:
-    subject_id inline get_id() const { return id; };
-    bool operator==(const Subject &other);
+    subject_id inline   get_id() const { return id; };
+    bool                operator==(const Subject &other);
+    
+    Subject() {};
     Subject(string title);
+    Subject(const Subject &other)               = default; 
+    Subject &operator=(const Subject &other)    = default; 
+    Subject(Subject &&other)                    = default; 
+    Subject &operator=(Subject &&other)         = default;
 
 private:
-    subject_id          id; // my own id
+    subject_id          id;  // my own id
     static subject_id   max_id_;
     string              title;
 };
@@ -271,30 +297,30 @@ public:
     ~Article() {};
 
 private:
-    int32_t         id;         // my own id
+    int32_t         id;          // my own id
     static int32_t  max_id_;
-    string          doi;        // DOI -- a unique article's ID
+    string          doi;         // DOI -- a unique article's ID
     string          title;          
     pub_type_id     type;           
-    date_vec        published;  // date of either online (pref.) or print publication 
+    date_vec        published;   // date of publication (online (pref.)/print)  
     int32_t         score;
-    date_vec        issued;     // date of issue
-    string          volume;     // volume's number
-    string          issue;      // issue's number        
-    str_vec         ct_numbers; // NCT IDs associated with the publication
-    int32_t         ref_num;    // number of references
-    int32_t         ref_by_num; // num. of times the article has been referenced
-    str_vec         references; // list of references
-    // I've decided to use Subjects' IDs instead of references to Subjects
-    // exclusively for the reason of space optimization: unlike Journals, there 
-    // are not so many subjects out there.
-    std::vector<subject_id>    subjects_ids;
+    date_vec        issued;      // date of issue
+    string          volume;      // volume's number
+    string          issue;       // issue's number        
+    str_vec         ct_numbers;  // NCT IDs associated with the publication
+    int32_t         ref_num;     // number of references
+    int32_t         ref_by_num;  // No of times the article has been referenced
+    str_vec         references;  // list of references
+    // The use of Subjects' IDs instead of references to Subjects is
+    // exclusively due to the reason of space optimization: unlike Journals, 
+    // there are not so many subjects out there.
+    std::vector<subject_id> subjects_ids;
     // Article may have several authors. Unfortunately, it's impossible to say
-    // whether the authors with the same full name are indeed the same person, 
-    // unless the author has ORCID, which is not always the case. Hence, I'm 
-    // using a simple vector with classes instead of references here.
+    // whether authors with the same full name are indeed the same person, 
+    // unless the author has ORCID, which is far not always the case. Hence, 
+    // a vector with classes instead of references is used here.
     std::vector<Author>     authors;
-    cref_vec<Journal>       journals; 
+    cref_vec<Journal>       journals;  // references to journals
 };
 
 // Gets a lost of journals the article has been published in.
