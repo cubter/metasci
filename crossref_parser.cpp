@@ -42,11 +42,11 @@ using std::cout;
 using std::cerr;
 
 // Setting currently assigned max IDs
-int32_t Journal::max_id_            = 0;
-int32_t Article::max_id_            = 0;
-int32_t Publisher::max_id_          = 0;
-int32_t Author::max_id_             = 0;
-metasci::subj_id Subject::max_id_   = 0;
+int32_t Journal::max_id_                        = 0;
+int32_t Article::max_id_                        = 0;
+int32_t Publisher::max_id_                      = 0;
+int32_t Author::max_id_                         = 0;
+metasci::subject_id Subject::max_id_            = 0;
 metasci::pub_type_id Publication_type::max_id_ = 0;
 
 void usage(int argc);
@@ -490,6 +490,6 @@ void parse_crossref_json(json &crossref_json,
         catch(const json::exception &e) 
         { }
         
-        articles.emplace_back(*article_b.build().get());
+        articles.push_back(std::move(article_b.build()));
     }  
 }
