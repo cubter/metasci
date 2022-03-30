@@ -266,7 +266,7 @@ public:
     Article(Article &&other)                    = default;
     Article &operator=(Article &&other)         = default;
     Article(const Article &other)               = delete;
-    Article &operator=(const Article &other)    = default;
+    Article &operator=(const Article &other)    = delete;
     Article()                                   = delete;
     ~Article() {};
 
