@@ -4,11 +4,9 @@ This is work in progress.
 - ORC support is yet to be done.
 - Asynchronous download from Crossref is to be implemented.
 
-MetaSci is a project aimed at [downloading and] and parsing Crossref's JSONs, containing 
-scientific publications metadata. Crossref is one of the leading registration authorities,
-having approximately 80% of the market share. 
+It's a project that will allow to search for scientific publications metadata (like Author, publication date, journal etc.), extracted primarily from Crossref. Crossref is one of the leading registration authorities, with approximately 80% of the market share. 
 The files are then converted to Apache's ORC format, which is storage-efficient and 
-suitable for download to Hadoop or BigQuery. I'm also going to use them for BI later.
+suitable for downloading to Hadoop or BigQuery. I'm also going to use them for BI.
 
 ## Sources
 
