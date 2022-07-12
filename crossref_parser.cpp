@@ -5,8 +5,8 @@
  */
 
 // #include "async_api_connector.h"
-#include "conditional.h"
 #include "article.h"
+#include "conditional.h"
 #include "logger.h"
 
 #define JSON_DIAGNOSTICS 1
@@ -19,35 +19,35 @@
 #include <unordered_set>
 #include <regex>
 
-using Author                = metasci::Author;
-using Article               = metasci::Article;
-using Date                  = metasci::Date;
+using author                = metasci::author;
+using article               = metasci::article;
+using date                  = metasci::date;
 using date_vec              = metasci::date_vec;
-using Journal               = metasci::Journal;
-using Journal_hasher        = metasci::Journal_hasher;
-using Journal_comparator    = metasci::Journal_comparator;
-using Subject               = metasci::Subject;
-using Publication_type      = metasci::Publication_type;
-using subject_vec           = std::vector<Subject>;
-using pub_type_vec          = std::vector<Publication_type>;
-using Publisher             = metasci::Publisher;
-using json_log_vec          = std::vector<metasci::Json_logger>;
+using journal               = metasci::journal;
+using journal_hasher        = metasci::journal_hasher;
+using journal_comparator    = metasci::journal_comparator;
+using subject               = metasci::subject;
+using publication_type      = metasci::publication_type;
+using subject_vec           = std::vector<subject>;
+using pub_type_vec          = std::vector<publication_type>;
+using publisher             = metasci::publisher;
+using json_log_vec          = std::vector<metasci::json_log>;
 using json                  = nlohmann::json;
-using article_vec           = std::vector<Article>;
+using article_vec           = std::vector<article>;
 using journal_uset          = 
-    std::unordered_set<Journal, Journal_hasher, Journal_comparator>;
+    std::unordered_set<journal, journal_hasher, journal_comparator>;
 
 using std::endl;
 using std::cout;
 using std::cerr;
 
 // Setting currently assigned max IDs
-int32_t Journal::max_id_                        = 0;
-int32_t Article::max_id_                        = 0;
-int32_t Publisher::max_id_                      = 0;
-int32_t Author::max_id_                         = 0;
-metasci::subject_id Subject::max_id_            = 0;
-metasci::pub_type_id Publication_type::max_id_ = 0;
+int32_t journal::max_id_                        = 0;
+int32_t article::max_id_                        = 0;
+int32_t publisher::max_id_                      = 0;
+int32_t author::max_id_                         = 0;
+metasci::subject_id subject::max_id_            = 0;
+metasci::pub_type_id publication_type::max_id_ = 0;
 
 void usage(int argc);
 void parse_crossref_json(json &crossref_json,
@@ -60,7 +60,7 @@ void parse_crossref_json(json &crossref_json,
 int main(int argc, char const *argv[])
 {
     // List of current pulication types
-    std::vector<Publication_type> publication_types
+    std::vector<publication_type> publication_types
     {
         { "book_section"        },
         { "monograph"           },
@@ -118,9 +118,9 @@ int main(int argc, char const *argv[])
         return 1;
     }
 
-    std::vector<Article>    articles;
-    std::vector<Author>     authors;
-    std::vector<Subject>    subjects;
+    std::vector<article>    articles;
+    std::vector<author>     authors;
+    std::vector<subject>    subjects;
     journal_uset            journals;
     json_log_vec            json_logs;
 
@@ -164,8 +164,8 @@ void parse_crossref_json(json &crossref_json,
         string title;
         string doi;
         string publisher;
-        metasci::cref_vec<Journal>  journal_refs;
-        std::vector<Author>         authors;
+        metasci::cref_vec<journal>  journal_refs;
+        std::vector<author>         authors;
 
         try
         {
@@ -199,18 +199,18 @@ void parse_crossref_json(json &crossref_json,
             return;
         }
 
-        // Journals' titles. 
+        // journals' titles. 
         try
         {
             json container_titles = item.at("container-title");
 
             for (auto &ct : container_titles)
             {
-                Journal j(std::move(ct), std::move(publisher));
+                journal j(std::move(ct), std::move(publisher));
 
-                metasci::cond::Emplacer<journal_uset, journal_uset::iterator, Journal> emp;
+                metasci::cond::Emplacer<journal_uset, journal_uset::iterator, journal> emp;
 
-                auto emplace_res = emp.emplace_to(journals, std::forward<Journal>(j));
+                auto emplace_res = emp.emplace_to(journals, std::forward<journal>(j));
                 
                 journal_refs.emplace_back(*emplace_res.first);
             }
@@ -258,7 +258,7 @@ void parse_crossref_json(json &crossref_json,
                     std::move(orcid), 
                     is_auth_orcid);
                 
-                // Author's affiliations; often left empty.
+                // author's affiliations; often left empty.
                 try
                 {                   
                     authors.back().set_affiliations(
@@ -281,7 +281,7 @@ void parse_crossref_json(json &crossref_json,
         catch(const json::exception &e) 
         { }
 
-        auto article_b = Article::Builder(std::move(title), 
+        auto article_b = article::builder(std::move(title), 
             std::move(doi), 
             std::move(journal_refs), 
             std::move(authors));
@@ -364,7 +364,7 @@ void parse_crossref_json(json &crossref_json,
 
             for (auto &el : issued)
             {
-                article_b.issued_b.emplace_back(Date{el.at(0), el.at(1), el.at(2)});
+                article_b.issued_b.emplace_back(date{el.at(0), el.at(1), el.at(2)});
             }
         }
         catch(const json::type_error &e)
@@ -462,7 +462,7 @@ void parse_crossref_json(json &crossref_json,
 
             for (auto &pd : published_dates)
             {
-                article_b.published_b.emplace_back(Date{pd.at(0), pd.at(1), pd.at(2)});
+                article_b.published_b.emplace_back(date{pd.at(0), pd.at(1), pd.at(2)});
             }
         }
         catch(const json::type_error &e)

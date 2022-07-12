@@ -11,18 +11,18 @@ using string = std::string;
 
 namespace metasci
 {
-class Logger
+class log
 {
 public:
-    virtual void write(std::ofstream &of) = 0;
-    virtual void write(std::ostream &os) = 0;
-    virtual int16_t get_message_code() const = 0;
+    virtual void write(std::ofstream &of)       = 0;
+    virtual void write(std::ostream &os)        = 0;
+    virtual int16_t get_message_code() const    = 0;
     
-    Logger() {};
-    virtual ~Logger() {};
+    log() {};
+    virtual ~log() {};
 };
 
-class Json_logger: public Logger
+class json_log : public log
 {
 private:
     int16_t message_code;
@@ -33,17 +33,17 @@ public:
     void write(std::ostream &os)    { os << message << '|' << context << '\n'; }
     int16_t get_message_code() const { return message_code; }
 
-    Json_logger(int16_t code, string message);
-    Json_logger(int16_t code, string message, string context);
-    virtual ~Json_logger() {};
+    json_log(int16_t code, string message);
+    json_log(int16_t code, string message, string context);
+    virtual ~json_log() {};
 };
 
-Json_logger::Json_logger(int16_t message_code, string message):
+json_log::json_log(int16_t message_code, string message):
     message_code(message_code),
     message(std::move(message))
 {};
 
-Json_logger::Json_logger(int16_t message_code, string message, string context):
+json_log::json_log(int16_t message_code, string message, string context):
     message_code(message_code),
     message(std::move(message)),        
     context(std::move(context))

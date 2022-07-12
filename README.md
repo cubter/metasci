@@ -17,9 +17,11 @@ size).
 
 ## Building
 
-Use `Cmake` to build the project: in the project's root directory execute
+Use `Cmake` to build the project:
 ```bash
-cmake . 
+mkdir build
+cd build
+cmake .. 
 cmake --build .
 ```
 
