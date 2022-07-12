@@ -7,7 +7,7 @@
 // #include "async_api_connector.h"
 #include "article.h"
 #include "conditional.h"
-#include "logger.h"
+#include "log.h"
 
 #define JSON_DIAGNOSTICS 1
 
